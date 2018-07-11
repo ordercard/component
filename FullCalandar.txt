@@ -1,0 +1,549 @@
+<@page name="司导日历" />
+<script type="text/javascript" src="/js/calendar/fullcalendar.min.js"></script>
+<script type="text/javascript" src="/js/calendar/moment.min.js"></script>
+<link rel="stylesheet"  href="/css/calendar/fullcalendar.min.css"/>
+
+
+
+<div class="gui-block gui-bg-white">
+    <#assign tabIndex=7 />
+    <#include "inc/detail_tab.htm" />
+    <div id="calendar"></div>
+    <div class="modal fade" id="editModel" tabindex="-1" role="dialog" data-backdrop="static" aria-hidden="true">
+        <div class="modal-dialog " role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title">发单类型</h4>
+                </div>
+                <form id="createConfForm" class="form-horizontal h-form auto-validate" method="post">
+                    <div class="modal-body">
+
+                        <div class="form-group">
+                            <label class="control-label col-md-2">有效日期：</label>
+                            <div class="col-md-10">
+                                <div class="row">
+                                    <div class="col-md-6 ">
+                                        <div class="input-group  datepicker date" data-show-clear="false" id="serviceStart"
+                                        >
+                                            <input id="startTime" name="startTime" class="form-control" type="text"
+                                                   value="${createStartDate!''}" placeholder="有效日期从" readonly=""
+                                                   style="cursor: pointer;">
+                                            <span class="input-group-addon "><span
+                                                    class="glyphicon glyphicon-calendar"></span></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="input-group  datepicker date" data-show-clear="false" id="serviceEnd"
+                                        >
+                                            <input id="endTime" name="endTime" class="form-control" type="text"
+                                                   value="${createEndDate!''}" placeholder="有效日期到" readonly=""
+                                                   style="cursor: pointer;">
+                                            <span class="input-group-addon "><span
+                                                    class="glyphicon glyphicon-calendar"></span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-md-4"  >
+                                <label class="control-label col-md-8"  style="text-align: left;">
+                                    <input type="checkbox"    name="lab1"   value="1" /><span style="margin-left:10px">亲子游</span>                                </label>
+                            </div>
+                            <div class="col-md-4"  >
+                                <label class="control-label col-md-8"  style="text-align: left;">
+                                    <input type="checkbox"    name="lab2"   value="2" /> <span  style="margin-left: 10px">绿牌车</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer" style="margin-top: 40px">
+                            <input class="g-btn g-btn-m5d78af" type="button" onclick="doAddSubmit()" value="提交">
+                            <input class="g-btn g-btn-mdadada" data-dismiss="modal" type="button" value="取消">
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="singleModel" tabindex="-1" role="dialog" data-backdrop="static" aria-hidden="true">
+        <div class="modal-dialog " role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title">发单类型</h4>
+                </div>
+                <form id="singleEditConfForm" class="form-horizontal h-form auto-validate" method="post">
+                    <div class="modal-body">
+
+                        <div class="form-group">
+                            <div class="col-md-4"  >
+                                <label class="control-label col-md-8"  style="text-align: left;">
+                                    <input type="checkbox"    name="slab1"   value="1" /><span style="margin-left:10px">亲子游</span>                                </label>
+                            </div>
+                            <div class="col-md-4"  >
+                                <label class="control-label col-md-8"  style="text-align: left;">
+                                    <input type="checkbox"    name="slab2"   value="2" /> <span  style="margin-left: 10px">绿牌车</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer" style="margin-top: 40px">
+                            <input class="g-btn g-btn-m5d78af" type="button" onclick="addLabel()" value="提交">
+                            <input class="g-btn g-btn-mdadada" data-dismiss="modal" type="button" value="取消">
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    Date.prototype.format =function(format)
+    {
+        var o = {
+            "M+" : this.getMonth()+1, //month
+            "d+" : this.getDate(), //day
+            "h+" : this.getHours(), //hour
+            "m+" : this.getMinutes(), //minute
+            "s+" : this.getSeconds(), //second
+            "q+" : Math.floor((this.getMonth()+3)/3), //quarter
+            "S" : this.getMilliseconds() //millisecond
+        }
+        if(/(y+)/.test(format)) format=format.replace(RegExp.$1,
+            (this.getFullYear()+"").substr(4- RegExp.$1.length));
+        for(var k in o)if(new RegExp("("+ k +")").test(format))
+            format = format.replace(RegExp.$1,
+                RegExp.$1.length==1? o[k] :
+                    ("00"+ o[k]).substr((""+ o[k]).length));
+        return format;
+    }
+$(document).ready(function() {
+    var dd = '${defaultdate}';
+    var guideId = '${guideId}';
+    var todayDate = moment().startOf('day');
+    var YM = todayDate.format('YYYY-MM');
+    var YESTERDAY = todayDate.clone().subtract(1, 'day').format('YYYY-MM-DD');
+    var TODAY = todayDate.format('YYYY-MM-DD');
+    var TOMORROW = todayDate.clone().add(1, 'day').format('YYYY-MM-DD');
+
+    $('#calendar').fullCalendar({
+        defaultDate: dd,
+        editable: true,
+        eventLimit: true,
+        customButtons: {
+            edit: {
+                text: '编辑',
+                click: function() {
+                    //可以给该按钮在这儿添加一些自定义业务逻辑
+                }
+            }
+        },
+        header: {
+            right: 'prev,next today edit',
+            center: 'title',
+            left: 'month,agendaWeek,agendaDay'
+        },
+        buttonText:{
+            today: '今天',
+            month: '月',
+            week: '周',
+            day: '天'
+        },
+
+            eventClick: function (event, jsEvent, view) {
+            var time = event.start._i;
+//            time = convertDate(time);
+            console.log("查看日期 time=" + time);
+            // 若未查询过，则调用接口查询
+            if($("#calendar").find("div[id='"+ time+"']").length == 0) {
+                $.get("/supplier/ajax/guides/guideOrder.ajax?guideId=" + ${guideId}+"&serviceDay="+time, function (data) {
+                    console.log("ShowInfo");
+                    if (data.status == 200) {
+                        var res = data.data;
+                        var orderDiv = "<div id='"+ time +"' style='width:190px;background-color: lightgrey' class='orderTips'>";
+                        var hasOrderFlag = false;
+                        if(res != undefined) {
+                            var hbcOrders = res.hbcOrders;
+                            var ownOrders = res.ownOrders;
+                            if(hbcOrders != undefined && hbcOrders.length >0){
+                                for(var i=0; i<hbcOrders.length; i++) {
+                                    var hbcOrder = hbcOrders[i];
+                                    orderDiv += "<p><span><a href='/order/detail.ajax?orderNo=" + hbcOrder.orderNo + "' target='_blank' >"+ hbcOrder.orderNo +"</a></span></p>";
+                                }
+                                hasOrderFlag = true;
+                            }
+                            if(ownOrders != undefined && ownOrders.length >0){
+                                for(var i=0; i<ownOrders.length; i++) {
+                                    var ownOrder = ownOrders[i];
+                                    orderDiv += "<p><span>" + ownOrder.orderNo + "  "+ orderTypeFormatter(ownOrder.orderType) + "  " + serviceTimeFormatter(ownOrder.serviceTime) + "</span></p>"
+                                }
+                                hasOrderFlag = true;
+                            }
+                            orderDiv += "</div>"
+                        }
+                        if (hasOrderFlag) {
+                            var orderTd = $("#calendar").find("td[data-date='"+ time+"']");
+                            orderTd.append(orderDiv);
+                            $("#" + time,".fc-day").remove(); // 删除冗余div
+                        }
+                    } else {
+                        $.messager.popup("服务器内部异常，获取司导日历失败");
+                        return false;
+                    }
+                }, "json");
+            } else {
+                // 判断是否隐藏
+                if($("#calendar").find("div[id='"+ time+"']").is(":hidden")) {
+                    $("#calendar").find("div[id='"+ time+"']").css("display","block");
+                } else {
+                    $("#calendar").find("div[id='"+ time+"']").css("display","none");
+                }
+            }
+        },
+
+        eventRender: function(event, element,view) {
+        },
+
+       dayRender:function (date,cell) {//按天显示
+         cell.css({"position":"relative"});
+           cell.append("<span  name='1-"+date.format() +"'  class='a"+date.format() +"' data-stime='"+date.format()+"' style= 'border-width: 4px;border-radius:30px;position:absolute;left:0;bottom:0;font-size: 7px;background-color: #e0e0d1;display: none ' onclick='removeLabel(this)'>亲子游 <i  class='glyphicon glyphicon-remove'></i> </span>");
+           cell.append("<span  name='2-"+date.format() +"' class='b"+date.format() +"' data-stime='"+date.format()+"'  style= 'border-radius：4px;border-radius:30px;position:absolute;left:55px;bottom:0;font-size:7px;background-color: #e0e0d1;display: none' onclick='removeLabel(this)'>绿牌车<i class='glyphicon glyphicon-remove'></i></span>");
+           cell.append("<span class='free' name='a-"+date.format() +"' class='c"+date.format() +"' data-stime='"+date.format()+"' style= 'position:absolute;right: 5px;bottom:0' onclick=' setTempDate(this)' >+</span>");
+           
+       }
+        /*eventMouseout:function  (event, jsEvent, view) {
+            var time = event.start._i;
+            time = convertDate(time);
+            // 鼠标移走，隐藏div
+            $("#calendar").find("div[id='"+ time+"']").css("display","none");
+        },*/
+    });
+    showActiveDay();
+    $('.fc-today-button').on('click',function() {
+		 showActiveDay();
+    });
+
+    $('.fc-prev-button').on('click',function() {
+         showActiveDay();
+    });
+
+    $('.fc-next-button').on('click',function() {
+         showActiveDay();
+    });
+});
+    var tempDate=''
+    function setTempDate(obj) {
+        var x= $(obj);
+        var date = x.attr("data-stime");
+        console.log("设定的临时时间为："+date);
+        tempDate=date;
+
+    }
+function showActiveDay(){
+    $('#calendar').fullCalendar('removeEvents');
+         var view = $('#calendar').fullCalendar('getView');
+         $.get("/supplier/ajax/guides/guideCalendar2.ajax?guideId=" + ${guideId}+"&guideMonth="+view.title, function (data) {
+             if (data.status == 200) {
+                var event = data.data;
+                $('#calendar').fullCalendar('addEventSource', event);
+                  var list = data.label;//获取label标签
+                  console.log(list);
+                      for (key in list){
+                          for(i in list[key]){
+                              var s= new Date(list[key][i].serviceDate).format('yyyy-MM-dd');
+                              console.log("日期为"+s);
+                                switch (list[key][i].stockGuideLabeId){
+                                    case 1: {//亲子游
+                                        var name ="1-"+s;
+                                        $(" span[name="+name+"]").css("display","block");
+                                        break;
+                                    }
+                                    case 2: {//绿牌车
+                                        var name ="2-"+s;
+                                        $(" span[name="+name+"]").css("display","block");
+                                        break;
+                                    }
+
+                                }
+                          }
+                      }
+             } else {
+                $.messager.popup("服务器内部异常，获取司导日历失败");
+                return false;
+         }
+     }, "json");
+         //是给两个按钮加
+    $(".fc-edit-button").attr("data-toggle","modal");
+    $(".fc-edit-button").attr("data-target","#editModel");
+    $(".fc-edit-button").attr("name","btn_edit");
+    $(".free").attr("data-toggle","modal");
+    $(".free").attr("data-target","#singleModel");
+    $(".free").attr("name","btn_edit");
+}
+//点击添加标签
+  function addLabel(obj) {
+      var x = $(obj);
+      var date = x.attr("data-stime");
+      console.log(date);
+      var currentDate=new Date().format("yyyy-MM-dd");
+      var l1 ='';
+      $.each($('#singleEditConfForm input[name="slab1"]:checked'),function (i,index) {
+
+          console.log($(this).val());
+          l1=$(this).val();
+
+
+      })
+      var l2 ='';
+      $.each($( '#singleEditConfForm input[name="slab2"]:checked'),function (i,index) {
+
+          console.log($(this).val());
+          l2=$(this).val();
+
+      });
+      var id= ${guideId};
+      var formdata= new FormData();
+
+      formdata.append("guideId",id);
+      formdata.append("serviceDate",tempDate);
+      formdata.append("label1",l1);
+      formdata.append("label2",l2);
+
+      $.ajax({
+          type: "POST",
+          dataType: "json",
+          contentType: false, // 注意这里应设为false
+          processData: false,
+          data: formdata,
+          url: "/supplier/guides/add-single-label",
+          success: function (retData) {
+              if(retData.status == 500){
+
+                  $.messager.alert('服务器出错了！请稍后重试！');
+                  return false
+              }if(status==400){
+                  $.messager.popup(retData.message);
+
+              }
+              if (retData.status == 200) {
+                  $.messager.popup("添加成功");
+                  showActiveDay();
+                  $('#singleModel').modal('hide');
+              } else {
+                  $.messager.popup(retData.message);
+              }
+          }
+      });
+
+
+  }
+
+//删除标签，点击
+function  removeLabel(obj) {
+    //this传入是一个js对象还不是jquery对象
+      var x = $(obj);
+
+     var date = x.attr("data-stime");
+     var temp= x.attr("name").split("-");
+
+     var labelId=temp[0];
+      var sdate= new Date(date).format("yyyy-MM-dd");
+
+      var currDate= new Date().format("yyyy-MM-dd");
+      console.log(sdate);
+      console.log(currDate);
+      if(sdate<currDate){
+          $.messager.popup("当前日期之前不可删除！");
+          return false;
+          }
+      var  name = x.attr("name");
+    var f= new FormData();
+    f.append("guideId",${guideId});
+    f.append("serviceDate",sdate);
+    f.append("labelId",labelId);
+    var  param = JSON.stringify(f);
+    $.ajax({
+        url: "/supplier/guides/deletel-label",
+        type: "POST",
+        dataType: "json",
+        contentType: false, // 注意这里应设为false
+        processData: false,
+        data: f,
+        success: function (retData) {
+            if(retData.status == 500) {
+
+                $.messager.alert('服务器出错了！请稍后重试！');
+                return false
+            }
+            if (retData.status == 200) {
+                $.messager.popup("删除成功");
+                showActiveDay();
+                x.css("display","none");
+            } else {
+                $.messager.popup(retData.message);
+            }
+        }
+    });
+            return false;
+
+
+
+
+
+}
+//这个是做批量编辑标签。
+function doAddSubmit () {
+   var startTime = $("#startTime").val();
+  var   endTime = $("#endTime").val();
+
+    if(startTime=='' ||startTime==undefined){
+        alert("开始日期不能为空！");
+        return false;
+    }
+    if(endTime=='' ||endTime==undefined){
+        alert("结束日期不能为空！");
+        return false;
+    }
+
+    var sdate = new Date(startTime.replace(/-/,"/"));
+    var edate = new Date(endTime.replace(/-/,"/"));
+    var currentDate=new Date().format("yyyy-MM-dd");
+    if(sdate-currentDate<0){
+        alert("开始日期必须从当今天或者今天之后！");
+        return false;
+
+
+    }
+    if((edate - sdate) / (1000 * 60 * 60 * 24)>210){
+            alert("间隔不能大于七个月");
+            return false;
+    }
+
+    var l1 ='';
+    $.each($('input[name="lab1"]:checked'),function (i,index) {
+
+            console.log($(this).val());
+            l1=$(this).val();
+
+
+    })
+        var l2 ='';
+    $.each($('input[name="lab2"]:checked'),function (i,index) {
+
+        console.log($(this).val());
+        l2=$(this).val();
+
+
+    })
+
+    var f={};
+    f.guideId= ${guideId};
+    f.startTime=startTime;
+    f.endTime=endTime;
+    f.label1=l1;
+    f.label2=l2;
+   var  param = JSON.stringify(f);
+    $.ajax({
+        type: "POST",
+        dataType: "json",
+        contentType: "application/json",
+        data: param,
+        url: "/supplier/guides/batch-edit-labels",
+        success: function (retData) {
+            if(retData.status == 500){
+
+                $.messager.alert('服务器出错了！请稍后重试！');
+                return false
+            }if(status==400){
+                $.messager.popup(retData.message);
+
+            }
+            if (retData.status == 200) {
+                $.messager.popup("编辑成功");
+                location.reload();
+              //  showActiveDay();
+                $('#editModel').modal('hide');
+            } else {
+                $.messager.popup(retData.message);
+            }
+        }
+    });
+
+
+}
+
+    // 格式化日期(yyyy-mm-dd)
+/*    function convertDate(dateStr) {
+        if(dateStr == undefined) {
+            return "";
+        } else {
+            var dayStr = [];
+            var year,month,day="";
+            dayStr = dateStr.split("-");
+            if(dayStr.length != 3) {
+                $.messager.alert("获取日期错误");
+                return false;
+            } else {
+                year = dayStr[0];
+                month = dayStr[1];
+                day = dayStr[2];
+                month = month.length == 2 ? month : ("0" + month);
+                day = day.length == 2 ? day : ("0" + day);
+                console.log("获取日期为：" + year + month + day)
+                return year + "-" + month + "-" + day;
+            }
+        }
+    }*/
+    // 订单类型
+    function orderTypeFormatter(orderType) {
+        switch (orderType) {
+            case 1:
+                return "接机";
+                break;
+            case 2:
+                return "送机";
+                break;
+            case 3:
+                return "按天包车";
+                break;
+            case 4:
+                return "单次接送";
+                break;
+            case 5:
+                return "线路包车";
+                break;
+            default :
+                return "";
+            break;
+        }
+    }
+
+    //非皇包车订单服务时间 2017-8-19 19:28:14
+    function serviceTimeFormatter(serviceTime) {
+        if(serviceTime != undefined && serviceTime.length >0) {
+            return serviceTime.substring(11,16);
+        } else {
+            return "";
+        }
+    }
+</script>
+<style>
+	body {
+		//margin: 40px 10px;
+		padding: 0;
+		font-family: "Lucida Grande",Helvetica,Arial,Verdana,sans-serif;
+		font-size: 14px;
+	}
+	#calendar {
+		max-width: 900px;
+		margin: 0 auto;
+	}
+</style>
